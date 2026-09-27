@@ -9,9 +9,8 @@ from joblib import cpu_count
 from scipy import sparse
 from sklearn.base import BaseEstimator, ClassNamePrefixFeaturesOutMixin, TransformerMixin
 from sklearn.utils import check_random_state
-from sklearn.utils.sparsefuncs import mean_variance_axis
 from sklearn.utils.validation import check_array, check_is_fitted, validate_data
-from threadpoolctl import threadpool_limits
+from ._threading import blas_context
 
 from . import _kernels
 from ._linalg import thin_svd
@@ -24,12 +23,12 @@ def _positive_int(name, value, *, zero=False):
 
 
 def _threads(n_jobs):
-    available = cpu_count()
     if n_jobs is None:
-        return min(8, available)
+        return min(8, cpu_count())
     if isinstance(n_jobs, (bool, np.bool_)) or not isinstance(n_jobs, Integral) or n_jobs == 0:
         raise ValueError("n_jobs must be None or a nonzero integer")
-    return max(1, available + 1 + n_jobs) if n_jobs < 0 else int(n_jobs)
+    # Explicit positive counts do not need affinity/cgroup discovery.
+    return max(1, cpu_count() + 1 + n_jobs) if n_jobs < 0 else int(n_jobs)
 
 
 def _canonical_csr(x):
@@ -56,6 +55,23 @@ def _matmat(x, b, n_threads):
     return np.ascontiguousarray(x @ b)
 
 
+def _gaussian_sketch(random_state, shape, dtype):
+    """Gaussian entries without generating temporary float64 data for float32.
+
+    Integer seeds use PCG64 (v0.2+); explicit RandomState objects keep the legacy
+    stream. None continues to respect numpy.random.seed, as in scikit-learn.
+    """
+    if isinstance(random_state, Integral) and not isinstance(random_state, (bool, np.bool_)):
+        rng = np.random.default_rng(int(random_state))
+    elif isinstance(random_state, np.random.Generator):
+        rng = random_state
+    else:
+        rng = check_random_state(random_state)
+    if isinstance(rng, np.random.Generator):
+        return rng.standard_normal(shape, dtype=dtype)
+    return np.ascontiguousarray(rng.standard_normal(shape), dtype=dtype)
+
+
 class MyMF(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
     """Fast approximate truncated SVD, without centering or missing-value masking.
 
@@ -71,8 +87,10 @@ class MyMF(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
         A shift is first estimated after iteration 1 and used at iteration 2.
     n_oversamples : int, default=10
         Additional sketch columns. The sketch is capped at min(X.shape).
-    random_state : int, RandomState or None, default=None
-        Gaussian sketch seed; the same convention as scikit-learn.
+    random_state : int, Generator, RandomState or None, default=None
+        Gaussian sketch seed. Integers use NumPy PCG64 and direct float32 draws
+        in v0.2+, so their factors differ from v0.1. Explicit RandomState objects
+        retain the legacy stream. None respects numpy.random.seed.
     tol : float, default=0
         Zero disables early stopping. A positive value enables a heuristic
         PVE-surrogate change test; it is NOT a certified SVD error tolerance.
@@ -171,7 +189,7 @@ class MyMF(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
 
     def _context(self):
         return (nullcontext() if self.blas_threads is None else
-                threadpool_limits(limits=int(self.blas_threads), user_api="blas"))
+                blas_context(int(self.blas_threads)))
 
     def _input(self, x, *, reset):
         if reset:
@@ -218,15 +236,15 @@ class MyMF(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
             self.scale_ = maxabs if maxabs and (maxabs < 1e-3 or maxabs > 1e3) else 1.0
             a = x / self.scale_ if self.scale_ != 1.0 else x
             if sparse.issparse(a):
-                a = _canonical_csr(a)
-                at = _canonical_csr(a.T.tocsr())
+                # _input validated and canonicalized x. Scalar scaling and
+                # SciPy's transpose preserve that invariant; do not scan again.
+                at = a.T.tocsr()
             else:
                 at = a.T
             # Iteration lives in the smaller side unless the user overrides it.
             forward, backward = (a, at) if self.orientation_ == "right" else (at, a)
-            rng = check_random_state(self.random_state)
-            omega = np.ascontiguousarray(
-                rng.standard_normal((forward.shape[0], width)), dtype=a.dtype
+            omega = _gaussian_sketch(
+                self.random_state, (forward.shape[0], width), a.dtype
             )
             q = _matmat(backward, omega, n_threads)
             self.matrix_passes_ += 1
@@ -288,10 +306,12 @@ class MyMF(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
                 raise FloatingPointError("Output overflows selected dtype; use dtype='float64'.")
             self.explained_variance_ = np.var(z, axis=0, dtype=np.float64)
             if sparse.issparse(x):
-                # Stable sparse statistics, including implicit zero entries.
-                stats_x = x.astype(np.float64, copy=False)
-                _, variance = mean_variance_axis(stats_x, axis=0)
-                total_variance = float(variance.sum())
+                # Columnwise Welford moments plus the implicit zeros. No
+                # float64 copy of every sparse value is needed.
+                total_variance = _kernels.csr_total_variance(
+                    x.data, x.indices, m, np.zeros(n, dtype=np.float64),
+                    np.zeros(n, dtype=np.float64), np.zeros(n, dtype=np.int64)
+                )
             else:
                 total_variance = float(np.var(x, axis=0, dtype=np.float64).sum())
             self.explained_variance_ratio_ = (

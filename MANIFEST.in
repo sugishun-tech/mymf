@@ -5,3 +5,5 @@ recursive-include examples *.py
 recursive-include benchmarks *.py *.json *.md *.txt
 recursive-include docs *.md
 exclude src/mymf/_kernels.c
+
+recursive-include tools *.py

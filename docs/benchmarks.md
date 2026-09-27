@@ -1,229 +1,124 @@
-# Benchmark report
+# Benchmark report: v0.2.0
 
-## Scope and environment
+## MovieLens 100K: actual uploaded data, not synthetic
 
-All bundled numeric results were actually run locally for this release. All data
-in those results are **synthetic**. There is no MovieLens or production evaluation.
-The baseline is the **installed sklearn 1.8.0**, not a claim to have timed the newest
-online release. The original dashSVD/MKL implementation, PRIMME_SVDS, block Krylov,
-PCAone and Row-aware Randomized SVD were not timed.
+Input SHA-256: `06416e597f82b7342361e41163890c81036900f418ad91315590814211dca490`. The file is the supplied official
+`ml-100k/u.data`. Dataset bytes are deliberately not redistributed in this project.
+The split code is unchanged from v0.1: ratings >= 4 are positives; the latest 20%
+of each user's positives are held out if the user has at least five positives.
+943 users x 1,682 items; 43,933 training positives; 11,442 test positives; 938 evaluated users.
+Candidates include every item except the user's training positives. No negative sampling.
+The per-user timestamp split is NOT a globally time-consistent split across all users.
+Scores and stable item-ID tie-breaking are evaluated by the same function for both models.
 
-Reported CPU: Intel Xeon Platinum 8573C. The Linux cgroup quota is four CPU cores
-(`cpu.max: 400000 100000`); host/affinity counts are not assumed to be available
-compute budget. Python 3.13.5, NumPy 2.3.5, SciPy 1.17.0, sklearn 1.8.0,
-Cython 3.2.4, GCC 14.2.0 and OpenBLAS 0.3.30. Default portable compilation was
-used, with OpenMP enabled and runtime AVX-512/FMA selected. No GPU, -march=native,
--ffast-math or external dataset cache was used.
+Linux x86-64, AMD EPYC 9V74, Python 3.13.5, NumPy 2.3.5, SciPy 1.17.0,
+sklearn **1.8.0** (not a claim about the latest release), Cython 3.2.4, OpenBLAS 0.3.30.
+Portable OpenMP build without `-march=native`; runtime AVX-512/FMA selected.
+Both BLAS and MyMF sparse kernels use **one thread**. Float32, rank 32, oversampling 10,
+`tol=0`. No reduced rank, omitted statistics, or early stopping is used for the speed comparison.
 
-## Timing protocol
+## Fresh-fit timing protocol
 
-`benchmarks/run.py` warms up each method once, changes method order across repetitions,
-uses fresh estimators with the same seed numbers, and measures complete
-`fit_transform` using `perf_counter`. Input validation, CSR canonicalization,
-transpose construction, sketch generation, iteration, factor extraction, embedding
-and explained-variance statistics are inside the timer. Compilation, data generation,
-explicit garbage collection and quality evaluation are outside it. Reported times
-are medians; the JSON also contains each observation, minima, maxima and seeds.
-There are three repetitions for the large case, five for medium and dense.
+10 sketch seeds (0..9), 30 fresh models per seed and method = **300 fits per method**.
+All exact methods are warmed once; method order is randomized in each timing round.
+The complete `fit_transform` includes input checks, CSR preparation, random numbers,
+transpose construction, factorization, public projection, variance, and internal BLAS limits.
+Only imports, dataset loading, model construction, warmup, and metric evaluation are excluded.
+Every timing, including slow samples, is saved. The reported median pools all 300 fits;
+quality metrics average the 10 seeds, not 300 repetitions of the same random draws.
+No input, factor, decomposition, or transpose is cached across fits.
+Only native-library discovery is reused by the thread-limit controller.
 
-These are warm-run in-memory measurements, not cold filesystem loads or total
-pipeline latency. Identical random seeds do not imply identical randomized sketches
-between different algorithms/orientations. Rank is 64 and oversampling is 10 for
-all methods. All MyMF runs use `normalizer="auto"`, `tol=0`, default orientation,
-and input-preserving dtype. A shift-disabled MyMF is included as a controlled
-ablation; it is not a second independent implementation of sklearn.
+| Method | Median ms | Recall@20 | NDCG@20 | Relative Frobenius error |
+|---|---:|---:|---:|---:|
+| TruncatedSVD_q2 | 5.647 | 0.195720 | 0.158065 | 0.734004 |
+| MyMF_q2 | 3.451 | 0.195770 | 0.158434 | 0.731105 |
+| TruncatedSVD_q5 | 9.448 | 0.197715 | 0.160791 | 0.728483 |
+| MyMF_q5 | 5.018 | 0.198344 | 0.161064 | 0.727808 |
+| MyMF_q4 | 4.512 | 0.197540 | 0.160583 | 0.728152 |
+| MyMF_q0 | 2.375 | 0.177086 | 0.143387 | 0.759070 |
 
-## Quality protocol
+Same-q speedups are **1.636x** at q=2 and
+**1.883x** at q=5. Mean ranking metrics do not
+fall below sklearn in this run, but tiny differences are not evidence of statistically
+superior recommendation quality. q=0 is deliberately shown as a poor quality/speed tradeoff.
+The reconstruction objective is still zero-filled unweighted SVD, not implicit ALS or BPR.
 
-Let `C = components_`, `Z = X @ C.T`, all evaluated in float64. We measure
-`||X - Z C||_F / ||X||_F` without constructing the dense reconstruction, using
+## Random stream compatibility and ablation
 
-```text
-residual² = ||X||_F² - 2 trace(Z.T Z) + sum((Z.T Z) * (C C.T))
-```
+v0.2 integer seeds use NumPy PCG64. Float32 sketches are generated directly in float32.
+The sketch is still Gaussian and its dimensions have not changed. Identical seed numbers
+are not identical sketches between MyMF versions or between MyMF and sklearn.
+Explicit `np.random.RandomState(seed)` retains the old Gaussian stream; `None` still
+respects `np.random.seed`. A `Generator` instance is also accepted and advanced in place.
 
-The last term retains the actual loss of component orthogonality. Projection
-energy `||Z||_F² / ||X||_F²` is also reported, but it is not identical to sklearn's
-centred explained-variance ratio. The raw records include orthogonality error.
-Sparse cases have no computed exact best rank-64 reference. Dense data have a
-known spectrum, so the optimum error and leading singular-value error are available.
-Three/five seeds are descriptive measurements, not a significance study.
+The optional legacy-stream measurements use the same v0.2 implementation with an
+explicit RandomState object. They give 3.955 ms
+at q=2 and 5.535 ms at q=5, also faster than
+the paired sklearn timings. The RandomState object's construction is outside the fit timer,
+just as estimator construction is. This is not a bitwise or timing reproduction of v0.1.
 
-## Large sparse, one thread
+## CPU dispatch and first-fit checks
 
-50,000 × 20,000 float32 CSR, 2,444,696 nonzeros, 19,757,572 input-storage bytes.
-Each row is generated from 50 events: a random one of 32 taste groups, with 75%
-within-group draws and 25% uniform-noise draws; duplicates become event counts.
-Both methods and BLAS are single-threaded. This is the primary apples-to-apples
-single-core timing comparison.
+An AVX2-only run uses the same CPU with `MYMF_SIMD=avx2`, five seeds and 15 fits per seed.
+It is a check of the alternate kernel, not a benchmark of an older physical CPU.
+The raw file is `benchmarks/results/v0.2/movielens_avx2_t1.json`.
 
-| Model | Median seconds | Projection energy | Relative Frobenius error |
-|---|---:|---:|---:|
-| sklearn_q2 | 0.757676 | 0.04868061 | 0.97535604 |
-| sklearn_q5 | 1.289154 | 0.04900352 | 0.97519049 |
-| mymf_q0 | 0.320158 | 0.00840239 | 0.99578994 |
-| mymf_q2 | 0.491231 | 0.04870590 | 0.97534307 |
-| mymf_q4 | 0.675301 | 0.04904119 | 0.97517117 |
-| mymf_q5 | 0.772221 | 0.04911607 | 0.97513278 |
-| mymf_unshifted_q2 | 0.497135 | 0.04856575 | 0.97541491 |
+A separate experiment launches a new interpreter for every sample, with **no MyMF warmup**,
+five processes per method. It includes initial controller discovery and LAPACK first use,
+but excludes Python imports and dataset loading for both models:
 
-Same q=2: sklearn/MyMF time ratio is
-**1.54×**.
-Default q=5 vs MyMF q=2 is
-**2.62×**, but with a
-slightly worse reconstruction error for MyMF q=2. MyMF q=4 vs sklearn q=5 is
-**1.91×** and has marginally
-lower measured error on this particular dataset.
-
-The relative error around 0.975 is large: rank 64 captures only about 4.9% of
-uncentred squared energy on this noisy matrix. This is not "97.5% accuracy".
-The purpose is to compare like-for-like low-rank approximation, not to present
-this data model as nearly lossless. Error differences in the last digits are
-small in practical terms and do not imply better ranking performance.
-
-## Large sparse, four MyMF workers
-
-| Model | Median seconds | Projection energy | Relative Frobenius error |
-|---|---:|---:|---:|
-| sklearn_q2 | 0.762277 | 0.04868061 | 0.97535604 |
-| sklearn_q5 | 1.349100 | 0.04900352 | 0.97519049 |
-| mymf_q0 | 0.253986 | 0.00840239 | 0.99578994 |
-| mymf_q2 | 0.343100 | 0.04870590 | 0.97534307 |
-| mymf_q4 | 0.423346 | 0.04904119 | 0.97517117 |
-| mymf_q5 | 0.456147 | 0.04911607 | 0.97513278 |
-| mymf_unshifted_q2 | 0.336815 | 0.04856575 | 0.97541491 |
-
-MyMF's sparse products use four OpenMP workers; BLAS is limited to one for **both**
-methods. sklearn's sparse product path in this benchmark does not use that OpenMP
-parallelism. Therefore this is **not a same-utilized-thread comparison**. Default
-sklearn q=5 / MyMF q=2 is 3.93×.
-MyMF q=2 itself improves by only
-1.43× from its one-worker run.
-Do not describe this as a fourfold parallel speedup.
-
-## Medium sparse, one thread
-
-20,000 × 8,000 float32 CSR, 765,127 nonzeros, 6,201,020 input-storage bytes.
-Same generation rule with 40 events per row, five measured seeds.
-
-| Model | Median seconds | Projection energy | Relative Frobenius error |
-|---|---:|---:|---:|
-| sklearn_q2 | 0.211701 | 0.09579179 | 0.95089864 |
-| sklearn_q5 | 0.331251 | 0.09656657 | 0.95049116 |
-| mymf_q0 | 0.096108 | 0.02452992 | 0.98765888 |
-| mymf_q2 | 0.150041 | 0.09584488 | 0.95087072 |
-| mymf_q4 | 0.200782 | 0.09664834 | 0.95044813 |
-| mymf_q5 | 0.232561 | 0.09682848 | 0.95035336 |
-| mymf_unshifted_q2 | 0.146554 | 0.09552351 | 0.95103969 |
-
-The corresponding four-worker run is in `sparse_medium_t4.json`, with the same
-thread-allocation caveat as the large case.
-
-## Dense, one thread
-
-1,200 × 600 float64; orthogonal factors with known singular values geometrically
-spaced from 50 down to 0.05. Five measured seeds. Dense products use BLAS.
-
-| Model | Median seconds | Projection energy | Relative Frobenius error |
-|---|---:|---:|---:|
-| sklearn_q2 | 0.033950 | 0.76787383 | 0.48179463 |
-| sklearn_q5 | 0.054655 | 0.77119651 | 0.47833407 |
-| mymf_q0 | 0.015136 | 0.59838865 | 0.63371894 |
-| mymf_q2 | 0.031549 | 0.76656809 | 0.48314787 |
-| mymf_q4 | 0.043417 | 0.77103980 | 0.47849785 |
-| mymf_q5 | 0.049244 | 0.77132240 | 0.47820246 |
-| mymf_unshifted_q2 | 0.029028 | 0.76502868 | 0.48473833 |
-
-MyMF q=2 is only about 1.08× faster than sklearn q=2 and has slightly higher
-reconstruction error. MyMF q=4 also has slightly higher error than sklearn q=5.
-MyMF q=5 has slightly lower error than sklearn q=5 in this example. There is no
-basis for extrapolating the sparse speed ratios to dense matrices. JSON records
-also report error divided by the known optimal rank-64 error.
-
-## Synthetic recommendation
-
-2,400 users × 1,600 items, 20 groups. Each user has 40 distinct preferred-group
-positives and 10 distinct positives from outside the group, randomly ordered.
-A per-user 20% holdout gives 96,000 training positives and 24,000 held-out positives.
-Synthetic timestamps only randomize the split; they do not model real time.
-
-Rank 32, oversampling 10, seeds 0/1/2, one OpenMP thread and one BLAS thread.
-All items except training positives are candidates, with **no sampled negatives**.
-An independent common scorer computes `transform(query) @ components_` for both
-solvers, with stable item-ID tie-breaking. Its ranking metrics are not computed
-through MyMF's recommendation helper, preventing helper-specific advantages.
-Timing covers fitting only, not recommendation/evaluation.
-
-| Model | Median fit seconds | Recall@20 (mean ± std) | NDCG@20 (mean ± std) |
-|---|---:|---:|---:|
-| sklearn_q2 | 0.017261 | 0.329028 ± 0.000761 | 0.252977 ± 0.000596 |
-| sklearn_q5 | 0.025017 | 0.328250 ± 0.001604 | 0.251680 ± 0.000658 |
-| mymf_q0 | 0.009081 | 0.318333 ± 0.001715 | 0.248112 ± 0.001247 |
-| mymf_q2 | 0.015026 | 0.329472 ± 0.000255 | 0.253213 ± 0.000406 |
-| mymf_q4 | 0.018262 | 0.330542 ± 0.000932 | 0.253755 ± 0.001250 |
-| mymf_q5 | 0.022108 | 0.329611 ± 0.000554 | 0.252860 ± 0.001136 |
-
-These differences are small relative to the tiny number of tested seeds. They do
-not establish better real-world recommendation quality. Reconstruction error and
-Recall/NDCG need not move together. See `recommendation_synthetic.json` for the
-complete observations and standard deviations.
-
-### Optional real-data run
-
-Obtain the official [MovieLens 100K dataset](https://grouplens.org/datasets/movielens/100k/)
-and respect its usage terms. Supply the local `u.data` file:
-
-```bash
-python benchmarks/recommendation.py --movielens /path/to/ml-100k/u.data \
-  --repeat 3 --threads 1 --output benchmarks/results/local_movielens.json
-```
-
-This uses ratings >=4 as positives, holds out each eligible user's latest 20%,
-evaluates users with at least five positives and ranks the full catalogue after
-excluding training positives. A source-file SHA-256 is recorded. It is a per-user
-temporal split, **not a globally leakage-free temporal evaluation**; other users'
-training data can be later in time than a particular test event.
-
-The local execution environment could not resolve the dataset host, so this path
-was **not run against the real MovieLens file**. No real-data numbers are fabricated
-or substituted. The downloaded dataset is not included in this repository.
-
-## Peak memory: a negative result
-
-Fresh Linux processes, large sparse case, rank 64, q=2, one worker:
-
-| Model | Total process peak RSS |
+| Method | First-fit median ms |
 |---|---:|
-| sklearn | 250.859375 MiB |
-| MyMF | 265.562500 MiB |
+| sklearn_q2 | 6.673 |
+| sklearn_q5 | 10.903 |
+| mymf_q2 | 4.922 |
+| mymf_q5 | 6.370 |
 
-MyMF uses about **5.86% more** peak RSS here. This is `ru_maxrss` for the entire
-process including imports, input and construction peaks, not an isolated algorithm
-allocation measurement. The retained CSR transpose and float64 safety/statistics
-work can increase peak memory. Avoiding a full dense reconstruction does not imply
-using less memory than sklearn.
+## Large sparse regression check
+
+Same synthetic generator as v0.1; 50,000 x 20,000; 2,444,696 stored values;
+float32; rank 64; oversampling 10; 3 seeds; one BLAS and one sparse thread.
+These are new v0.2 measurements, not relabelled v0.1 numbers.
+
+| Method | Median seconds | Relative Frobenius error |
+|---|---:|---:|
+| sklearn_q2 | 0.447861 | 0.97535604 |
+| mymf_q2 | 0.219736 | 0.97534519 |
+| sklearn_q5 | 0.767076 | 0.97519049 |
+| mymf_q4 | 0.319305 | 0.97517225 |
+| mymf_q5 | 0.349339 | 0.97513339 |
+
+No new dense or peak-memory advantage is claimed. The v0.1 dense, memory, and
+synthetic-recommendation results are retained explicitly as history in
+[benchmarks_v0.1.md](benchmarks_v0.1.md), with original JSON files at `benchmarks/results/`.
+They are not measurements of v0.2. The user's v0.1 MovieLens result is retained under
+`benchmarks/results/v0.1/user_local_movielens.json`; its machine is different/unspecified,
+so it must not be used to calculate an end-to-end before/after speedup on this machine.
 
 ## Reproduce
 
 ```bash
-python benchmarks/run.py --case sparse_medium --threads 1 --repeat 5 \
-  --output benchmarks/results/local_medium_t1.json
-python benchmarks/run.py --case sparse_medium --threads 4 --repeat 5 \
-  --output benchmarks/results/local_medium_t4.json
+python benchmarks/recommendation.py \
+  --movielens /path/to/ml-100k/u.data --threads 1 \
+  --rank 32 --oversamples 10 --repeat 10 --timing-repeats 30 \
+  --include-legacy --assert-faster \
+  --output benchmarks/results/local_movielens.json
+
+MYMF_SIMD=avx2 python benchmarks/recommendation.py \
+  --movielens /path/to/ml-100k/u.data --threads 1 \
+  --repeat 5 --timing-repeats 15 --assert-faster \
+  --output benchmarks/results/local_movielens_avx2.json
+
+python benchmarks/cold_start.py --movielens /path/to/ml-100k/u.data \
+  --repeat 5 --output benchmarks/results/local_cold.json
+
 python benchmarks/run.py --case sparse_large --threads 1 --repeat 3 \
-  --output benchmarks/results/local_large_t1.json
-python benchmarks/run.py --case sparse_large --threads 4 --repeat 3 \
-  --output benchmarks/results/local_large_t4.json
-python benchmarks/run.py --case dense --threads 1 --repeat 5 \
-  --output benchmarks/results/local_dense.json
-python benchmarks/recommendation.py --threads 1 --repeat 3 \
-  --output benchmarks/results/local_recommendation.json
-python benchmarks/memory.py --model mymf > benchmarks/results/local_memory_mymf.json
-python benchmarks/memory.py --model sklearn > benchmarks/results/local_memory_sklearn.json
+  --output benchmarks/results/local_large.json
 ```
 
-The environment, compiler, clock state, background load, cache behaviour, row
-skew, dtype, spectrum and rank can all change results. FMA and different BLAS can
-change the last numerical digits. Try an AVX2 override if AVX-512 is slower on your
-processor. Changing BLAS thread budgets is a separate experiment, not a hidden
-baseline adjustment.
+`--assert-faster` saves all results before raising if q=2 or q=5 fails to beat sklearn
+on the local machine. It does not adjust parameters, rerun until successful, or discard
+slow fits. The benchmark is an offline command, not a noisy CI unit test.
+CPU, compiler, BLAS, thread quotas and data can change the result; no universal claim
+is made for every machine, rank, matrix or competing SVD implementation.

@@ -19,10 +19,16 @@ def thin_svd(a: np.ndarray, *, normalizer: str = "auto", left: bool = True):
         work = np.asarray(a, dtype=np.float64)
         gram = work.T @ work
         del work
-        eigenvalues, eigenvectors = linalg.eigh(gram, check_finite=False, driver="evd")
+        # gram is a known 2-D float64 matrix. The low-level wrapper avoids
+        # repeated batch/driver discovery, without skipping the numeric guards.
+        eigenvalues, eigenvectors, info = linalg.lapack.dsyevd(
+            np.asfortranarray(gram), lower=1, overwrite_a=1
+        )
+        if info != 0:
+            fallback = True
         # Squaring the condition number is unsafe for tiny singular directions.
         threshold = 1e-8 if a.dtype == np.float32 else 1e-10
-        fallback = (
+        fallback = fallback or (
             not np.isfinite(eigenvalues).all()
             or eigenvalues[-1] <= 0
             or eigenvalues[0] <= threshold * eigenvalues[-1]

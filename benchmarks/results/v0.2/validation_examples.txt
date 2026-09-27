@@ -1,0 +1,12 @@
+build: {'openmp': True, 'native': False, 'language': 'C', 'simd': 'avx512f+fma'}
+embedding: (2000, 32) float32
+components: (32, 800)
+matrix products: 6
+variance ratio sum: 0.0915662429026981
+(500, 16) 16
+user=0, recommended item columns=[2 5], scores=[6.6666663e-01 5.7366236e-08]
+user=1, recommended item columns=[1 5], scores=[6.6666663e-01 6.5220007e-09]
+user=2, recommended item columns=[0 5], scores=[6.6666663e-01 6.5220007e-09]
+user=3, recommended item columns=[5 1], scores=[6.666666e-01 8.716856e-08]
+user=4, recommended item columns=[4 1], scores=[6.666666e-01 8.716856e-08]
+user=5, recommended item columns=[3 1], scores=[6.666666e-01 8.716856e-08]

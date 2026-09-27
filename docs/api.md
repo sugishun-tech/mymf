@@ -14,7 +14,7 @@ MyMF(n_components=2, *, algorithm="shifted", n_iter=2, n_oversamples=10,
 | `algorithm` | `"shifted"` uses dynamic shifts. `"randomized"` disables shifts in the same implementation; it is not sklearn's complete solver. |
 | `n_iter` | Nonnegative number of iterations; upper limit when `tol > 0`. Default 2. Shift first influences iteration 2. |
 | `n_oversamples` | Nonnegative extra sketch width; actual width is capped at `min(X.shape)`. |
-| `random_state` | Integer, NumPy `RandomState`, or None, following sklearn semantics. `Generator` is not accepted. |
+| `random_state` | Integer (PCG64 in v0.2), NumPy `Generator` or `RandomState`, or None. Integer-seeded factors differ from v0.1; explicit RandomState retains the legacy stream; None respects numpy.random.seed. |
 | `tol` | Finite nonnegative heuristic stopping threshold. Zero disables stopping. Positive values need at least one oversampling direction. Not a certified error tolerance. |
 | `normalizer` | `"auto"`: guarded float64 Gram eigendecomposition. `"qr"`: Householder QR plus small SVD. |
 | `orientation` | `"auto"` maintains the basis on the smaller side; or force `"left"`/`"right"`. |
@@ -79,7 +79,20 @@ public projection, especially with the left orientation. Explained variance and
 uncentred projection energy are **different metrics**. Components can differ in
 sign, rotation within repeated singular subspaces, or rounding between machines.
 
+## Random stream compatibility
+
+The API is unchanged except that NumPy Generator objects are now accepted.
+Integer seeds use PCG64; float32 work draws directly in float32, avoiding a large
+temporary float64 sketch. This changes factors for the same integer seed compared
+with v0.1. An explicit `np.random.RandomState(seed)` retains the old sketch stream;
+rounding can still differ across versions or CPU kernels. No numerical output is
+promised to be bitwise stable across NumPy or mymf releases.
+
 ## Thread and persistence notes
+
+Native-library discovery is reused, not matrix-dependent state. If a new BLAS
+library is loaded after the first fit, call `mymf.refresh_threadpools()` outside
+concurrent work. This refreshes only the process-local controller.
 
 `threadpoolctl` sets process-wide BLAS limits temporarily. For concurrent independent
 calls from Python threads, configure external BLAS limits and use

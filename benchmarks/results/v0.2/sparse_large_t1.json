@@ -1,0 +1,385 @@
+{
+  "environment": {
+    "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_max": "400000 100000",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "sklearn": "1.8.0",
+    "build": {
+      "openmp": true,
+      "native": false,
+      "language": "C",
+      "simd": "avx512f+fma"
+    },
+    "threadpools": [
+      {
+        "user_api": "blas",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "filepath": "/opt/pyvenv/lib/python3.13/site-packages/numpy.libs/libscipy_openblas64_-fdde5778.so",
+        "version": "0.3.30",
+        "threading_layer": "pthreads",
+        "architecture": "SkylakeX"
+      },
+      {
+        "user_api": "blas",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "filepath": "/opt/pyvenv/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-6cdc3b4a.so",
+        "version": "0.3.30",
+        "threading_layer": "pthreads",
+        "architecture": "SkylakeX"
+      },
+      {
+        "user_api": "openmp",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "libgomp",
+        "filepath": "/opt/pyvenv/lib/python3.13/site-packages/scikit_learn.libs/libgomp-e985bcbb.so.1.0.0",
+        "version": null
+      },
+      {
+        "user_api": "openmp",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "libgomp",
+        "filepath": "/usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0",
+        "version": null
+      }
+    ],
+    "parameters": {
+      "case": "sparse_large",
+      "threads": 1,
+      "blas_threads": 1,
+      "repeat": 3,
+      "rank": 64,
+      "output": "benchmarks/results/v0.2/sparse_large_t1.json"
+    }
+  },
+  "dataset": {
+    "name": "sparse_large",
+    "synthetic": true,
+    "shape": [
+      50000,
+      20000
+    ],
+    "dtype": "float32",
+    "nnz": 2444696,
+    "input_bytes": 19757572
+  },
+  "records": {
+    "sklearn_q2": {
+      "times": [
+        0.43407981999996537,
+        0.4478608729999678,
+        0.45262658800004374
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.04868282558484876,
+          "relative_frobenius_error": 0.9753549008824831,
+          "orthogonality_error": 7.830684070158894e-06
+        },
+        {
+          "projection_energy": 0.04867967661142871,
+          "relative_frobenius_error": 0.9753565151652992,
+          "orthogonality_error": 7.914203676860822e-06
+        },
+        {
+          "projection_energy": 0.04867932275201978,
+          "relative_frobenius_error": 0.9753566990307435,
+          "orthogonality_error": 7.302223526134099e-06
+        }
+      ],
+      "fallbacks": null,
+      "matrix_passes": null,
+      "seconds_median": 0.4478608729999678,
+      "seconds_min": 0.43407981999996537,
+      "seconds_max": 0.45262658800004374,
+      "quality_mean": {
+        "projection_energy": 0.048680608316099085,
+        "relative_frobenius_error": 0.9753560383595086,
+        "orthogonality_error": 7.682370424384605e-06
+      },
+      "quality_std": {
+        "projection_energy": 1.5744871443407737e-06,
+        "relative_frobenius_error": 8.078127312076667e-07,
+        "orthogonality_error": 2.7095833549707936e-07
+      }
+    },
+    "sklearn_q5": {
+      "times": [
+        0.8035037129999409,
+        0.7670757409999851,
+        0.7604539129999921
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.04900568132258887,
+          "relative_frobenius_error": 0.9751893807485983,
+          "orthogonality_error": 7.646946967639552e-06
+        },
+        {
+          "projection_energy": 0.04900400078808719,
+          "relative_frobenius_error": 0.9751902395382321,
+          "orthogonality_error": 7.740077454863756e-06
+        },
+        {
+          "projection_energy": 0.04900086615110349,
+          "relative_frobenius_error": 0.9751918497579136,
+          "orthogonality_error": 7.876355321058931e-06
+        }
+      ],
+      "fallbacks": null,
+      "matrix_passes": null,
+      "seconds_median": 0.7670757409999851,
+      "seconds_min": 0.7604539129999921,
+      "seconds_max": 0.8035037129999409,
+      "quality_mean": {
+        "projection_energy": 0.049003516087259856,
+        "relative_frobenius_error": 0.9751904900149148,
+        "orthogonality_error": 7.754459914520746e-06
+      },
+      "quality_std": {
+        "projection_energy": 1.9954398474895175e-06,
+        "relative_frobenius_error": 1.0234111836309943e-06,
+        "orthogonality_error": 9.42061198082391e-08
+      }
+    },
+    "mymf_q0": {
+      "times": [
+        0.13397429700000885,
+        0.13996665700005906,
+        0.14047249700001885
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.008361399701280116,
+          "relative_frobenius_error": 0.9958105243103774,
+          "orthogonality_error": 3.993208195127426e-07
+        },
+        {
+          "projection_energy": 0.008364490364484379,
+          "relative_frobenius_error": 0.9958089724612912,
+          "orthogonality_error": 4.086386208026343e-07
+        },
+        {
+          "projection_energy": 0.00863481406863314,
+          "relative_frobenius_error": 0.9956732324936599,
+          "orthogonality_error": 4.193608374473271e-07
+        }
+      ],
+      "fallbacks": 0,
+      "matrix_passes": 2,
+      "seconds_median": 0.13996665700005906,
+      "seconds_min": 0.13397429700000885,
+      "seconds_max": 0.14047249700001885,
+      "quality_mean": {
+        "projection_energy": 0.008453568044799213,
+        "relative_frobenius_error": 0.9957642430884429,
+        "orthogonality_error": 4.0910675925423465e-07
+      },
+      "quality_std": {
+        "projection_energy": 0.00012816650346708454,
+        "relative_frobenius_error": 6.435732711952076e-05,
+        "orthogonality_error": 8.187997106008967e-09
+      }
+    },
+    "mymf_q2": {
+      "times": [
+        0.21973620599999322,
+        0.21928261899995505,
+        0.2270591209999111
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.04870210787389932,
+          "relative_frobenius_error": 0.9753450119411938,
+          "orthogonality_error": 4.736614222882587e-07
+        },
+        {
+          "projection_energy": 0.04870164904327496,
+          "relative_frobenius_error": 0.975345247195205,
+          "orthogonality_error": 4.86304249132727e-07
+        },
+        {
+          "projection_energy": 0.04870151135525836,
+          "relative_frobenius_error": 0.9753453176328014,
+          "orthogonality_error": 4.5650978169692474e-07
+        }
+      ],
+      "fallbacks": 0,
+      "matrix_passes": 6,
+      "seconds_median": 0.21973620599999322,
+      "seconds_min": 0.21928261899995505,
+      "seconds_max": 0.2270591209999111,
+      "quality_mean": {
+        "projection_energy": 0.04870175609081088,
+        "relative_frobenius_error": 0.9753451922564,
+        "orthogonality_error": 4.721584843726368e-07
+      },
+      "quality_std": {
+        "projection_energy": 2.55020265160628e-07,
+        "relative_frobenius_error": 1.3070461341147686e-07,
+        "orthogonality_error": 1.220987822023436e-08
+      }
+    },
+    "mymf_q4": {
+      "times": [
+        0.32356752500004404,
+        0.3193054170000096,
+        0.30302496499996323
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.049039949681696664,
+          "relative_frobenius_error": 0.9751718055586823,
+          "orthogonality_error": 6.010218978038275e-07
+        },
+        {
+          "projection_energy": 0.04903804579080638,
+          "relative_frobenius_error": 0.9751727818637259,
+          "orthogonality_error": 5.878475095423268e-07
+        },
+        {
+          "projection_energy": 0.04903926403732035,
+          "relative_frobenius_error": 0.97517215716416,
+          "orthogonality_error": 5.55975929998219e-07
+        }
+      ],
+      "fallbacks": 0,
+      "matrix_passes": 10,
+      "seconds_median": 0.3193054170000096,
+      "seconds_min": 0.30302496499996323,
+      "seconds_max": 0.32356752500004404,
+      "quality_mean": {
+        "projection_energy": 0.04903908650327446,
+        "relative_frobenius_error": 0.9751722481955228,
+        "orthogonality_error": 5.816151124481244e-07
+      },
+      "quality_std": {
+        "projection_energy": 7.873325784407003e-07,
+        "relative_frobenius_error": 4.037391206302001e-07,
+        "orthogonality_error": 1.8910612259449195e-08
+      }
+    },
+    "mymf_q5": {
+      "times": [
+        0.34970274599993445,
+        0.34933930199997576,
+        0.3366360169999325
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.04911558952370518,
+          "relative_frobenius_error": 0.9751330222510568,
+          "orthogonality_error": 5.85587823393755e-07
+        },
+        {
+          "projection_energy": 0.049113935411205505,
+          "relative_frobenius_error": 0.9751338698787305,
+          "orthogonality_error": 6.799947351165129e-07
+        },
+        {
+          "projection_energy": 0.049115062264643405,
+          "relative_frobenius_error": 0.9751332922043902,
+          "orthogonality_error": 5.37486212137411e-07
+        }
+      ],
+      "fallbacks": 0,
+      "matrix_passes": 12,
+      "seconds_median": 0.34933930199997576,
+      "seconds_min": 0.3366360169999325,
+      "seconds_max": 0.34970274599993445,
+      "quality_mean": {
+        "projection_energy": 0.04911486239985136,
+        "relative_frobenius_error": 0.9751333947780592,
+        "orthogonality_error": 6.010229235492263e-07
+      },
+      "quality_std": {
+        "projection_energy": 6.89918590229977e-07,
+        "relative_frobenius_error": 3.5356205159509864e-07,
+        "orthogonality_error": 5.91937582184044e-08
+      }
+    },
+    "mymf_unshifted_q2": {
+      "times": [
+        0.22632089999990512,
+        0.21817002600005253,
+        0.22550034500000038
+      ],
+      "seeds": [
+        100,
+        101,
+        102
+      ],
+      "quality": [
+        {
+          "projection_energy": 0.04856195673459016,
+          "relative_frobenius_error": 0.9754168561390313,
+          "orthogonality_error": 4.7164039029177e-07
+        },
+        {
+          "projection_energy": 0.04856119602225831,
+          "relative_frobenius_error": 0.9754172460774528,
+          "orthogonality_error": 4.57458172434199e-07
+        },
+        {
+          "projection_energy": 0.0485615399547961,
+          "relative_frobenius_error": 0.9754170697457252,
+          "orthogonality_error": 4.81589650159408e-07
+        }
+      ],
+      "fallbacks": 0,
+      "matrix_passes": 6,
+      "seconds_median": 0.22550034500000038,
+      "seconds_min": 0.21817002600005253,
+      "seconds_max": 0.22632089999990512,
+      "quality_mean": {
+        "projection_energy": 0.04856156423721485,
+        "relative_frobenius_error": 0.9754170573207365,
+        "orthogonality_error": 4.702294042951257e-07
+      },
+      "quality_std": {
+        "projection_energy": 3.11033802937764e-07,
+        "relative_frobenius_error": 1.5943395374381993e-07,
+        "orthogonality_error": 9.902027247407794e-09
+      }
+    }
+  },
+  "timing_scope": "fit_transform including conversion, validation, transpose and variance; excluding generation, warmup and quality scoring"
+}

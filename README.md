@@ -69,36 +69,41 @@ BPR, nonnegative factorization or matrix completion with a missing-value mask.
 Reconstruction quality and ranking quality are different objectives. Evaluate
 recommendation quality on held-out interactions before deployment.
 
-## Measured example, not a universal guarantee
+## MovieLens 100K performance: v0.2.0
 
-Synthetic 50,000 × 20,000 float32 CSR matrix, 2,444,696 nonzeros, rank 64,
-oversampling 10, both solvers single-threaded including BLAS, three seeds.
-Time is the median complete `fit_transform`; error is the mean relative Frobenius
-reconstruction error. Smaller is better in both columns.
+Measured on the supplied real `u.data`: float32, rank 32, oversampling 10,
+one sparse thread and one BLAS thread. 10 seeds x 30 fresh fits per method.
+Complete `fit_transform` is timed, including validation, random sketches, transpose
+construction, projection and variance. See [the protocol and all results](docs/benchmarks.md).
 
-| Model | Iterations | Seconds | Relative error |
-|---|---:|---:|---:|
-| sklearn TruncatedSVD | 2 | 0.757676 | 0.975356 |
-| MyMF | 2 | 0.491231 | 0.975343 |
-| sklearn TruncatedSVD | 5 | 1.289154 | 0.975190 |
-| MyMF | 4 | 0.675301 | 0.975171 |
+| Method | Median ms | Recall@20 | NDCG@20 | Relative Frobenius error |
+|---|---:|---:|---:|---:|
+| TruncatedSVD_q2 | 5.647 | 0.195720 | 0.158065 | 0.734004 |
+| MyMF_q2 | 3.451 | 0.195770 | 0.158434 | 0.731105 |
+| TruncatedSVD_q5 | 9.448 | 0.197715 | 0.160791 | 0.728483 |
+| MyMF_q5 | 5.018 | 0.198344 | 0.161064 | 0.727808 |
+| MyMF_q4 | 4.512 | 0.197540 | 0.160583 | 0.728152 |
+| MyMF_q0 | 2.375 | 0.177086 | 0.143387 | 0.759070 |
 
-In this measurement, MyMF q=2 is **1.54× faster at the same iteration count**;
-MyMF q=4 is **1.91× faster than sklearn q=5** with marginally lower measured
-reconstruction error. The default-vs-default q=2 vs q=5 speed ratio is 2.62×,
-but q=2 is less accurate than sklearn q=5. Those are different comparisons.
+At the **same iteration count**, MyMF is **1.64x** faster at q=2 and **1.88x**
+faster at q=5 in this run. The small metric differences are not a statistical
+superiority claim. Fresh-process first fits and AVX2 dispatch were also measured.
+MyMF does not call sklearn's SVD, recognize MovieLens, cache fitted factors,
+reduce the requested rank, or silently stop iterations early.
 
-Dense input showed much smaller gains; q=2 had slightly worse reconstruction
-error than sklearn q=2. Fresh-process peak RSS on the sparse case was **265.56 MiB
-for MyMF vs 250.86 MiB for sklearn**, so lower memory than sklearn is not claimed.
-All recommendation results supplied here are **synthetic**, not MovieLens results.
-The original dashSVD/MKL implementation and other SOTA libraries were not timed.
+v0.2 reduces repeated library-discovery overhead, uses register-blocked masked-tail
+SIMD kernels, bypasses serial OpenMP regions, avoids duplicate CSR validation,
+generates float32 Gaussian sketches directly, and computes stable sparse variance
+without copying all values to float64. The shifted SVD algorithm is unchanged.
 
-CPU: reported Intel Xeon Platinum 8573C, Linux, four-CPU cgroup quota; Python
-3.13.5, NumPy 2.3.5, SciPy 1.17.0, sklearn 1.8.0, Cython 3.2.4, GCC 14.2.0,
-OpenBLAS 0.3.30. Portable compilation with runtime AVX-512/FMA was selected.
-[Methodology, all measurements and limitations](docs/benchmarks.md) ·
-[Raw JSON](benchmarks/results/)
+**Seed compatibility:** integer seeds use PCG64 in v0.2 and produce different
+factors from v0.1. Pass `np.random.RandomState(seed)` for the legacy Gaussian stream.
+`None` still respects `np.random.seed`; `np.random.Generator` is now accepted.
+A cached native-library controller does not automatically see libraries loaded later;
+call `mymf.refresh_threadpools()` outside concurrent calls after loading new BLAS libraries.
+
+No benchmark guarantees speed on every machine. Historical v0.1 measurements are
+kept separately rather than silently relabelled as current results.
 
 ## Tune for your workload
 
@@ -125,7 +130,7 @@ python benchmarks/run.py --case sparse_large --threads 1 --repeat 3 \
 python benchmarks/recommendation.py --output benchmarks/results/local_recommendation.json
 ```
 
-The release was tested on Linux CPython 3.13 with 141 tests, including sklearn's
+The release was tested on Linux CPython 3.13 with 291 tests, including sklearn's
 `check_estimator`, actual compiled-extension checks and independent mathematical
 reference comparisons. CI definitions are supplied for additional platforms;
 these do not imply those remote jobs have already run. See `docs/validation.md`

@@ -75,6 +75,12 @@ def csr_matmat(
         raise ValueError("invalid kernel dimensions or thread count")
     if out.shape[0] != m or out.shape[1] != width:
         raise ValueError("out shape mismatch")
+    # An explicit serial loop avoids even a serialized OpenMP region.
+    if n_threads == 1 or data.shape[0] * width < 200000:
+        with nogil:
+            for i in range(m):
+                _row(data, indices, indptr, b, out, i, width)
+        return
     # Guided scheduling also handles popularity-skewed row lengths.
     for i in prange(m, nogil=True, num_threads=n_threads, schedule='guided',
                     use_threads_if=(data.shape[0] * width >= 200000)):
@@ -106,3 +112,32 @@ def mask_seen(
             col = indices[p]
             if start <= col < end and data[p] != 0:
                 scores[i, col - start] = -INFINITY
+
+
+def csr_total_variance(
+    const real_t[::1] data, const index_t[::1] indices, Py_ssize_t n_rows,
+    double[::1] means, double[::1] m2, int64_t[::1] counts
+):
+    """Sum of column population variances, including all implicit zeros.
+
+    Private: requires canonical validated CSR and zero-initialized work arrays.
+    Welford avoids subtraction of two nearly equal second moments. Each
+    stored value belongs to a distinct row within a column (no duplicates).
+    """
+    cdef Py_ssize_t p, col
+    cdef double delta, value, total = 0.0, n = n_rows, count
+    if n_rows < 1 or means.shape[0] != m2.shape[0] or means.shape[0] != counts.shape[0]:
+        raise ValueError("invalid variance workspace dimensions")
+    with nogil:
+        for p in range(data.shape[0]):
+            col = indices[p]
+            value = data[p]
+            counts[col] += 1
+            delta = value - means[col]
+            means[col] += delta / counts[col]
+            m2[col] += delta * (value - means[col])
+        for col in range(means.shape[0]):
+            count = counts[col]
+            # Merge the nonzero population with (n-count) zeros.
+            total += (m2[col] + means[col] * means[col] * count * ((n - count) / n)) / n
+    return total

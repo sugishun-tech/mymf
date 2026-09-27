@@ -252,13 +252,19 @@ def test_compiled_extension_is_real():
 
 @pytest.mark.parametrize('shape,side', [((83, 47), 'right'), ((47, 83), 'left')])
 @pytest.mark.parametrize('normalizer', ['auto', 'qr'])
-def test_against_independent_shifted_svd_reference(shape, side, normalizer):
+@pytest.mark.parametrize('rng_kind', ['integer', 'legacy', 'generator'])
+def test_against_independent_shifted_svd_reference(shape, side, normalizer, rng_kind):
     """Use full thin LAPACK SVD at every step, not the production Gram helper."""
     from scipy import linalg
     x = np.random.RandomState(91).normal(size=shape)
     k, width, iterations, seed = 7, 11, 3, 17
     forward, backward = (x, x.T) if side == 'right' else (x.T, x)
-    omega = np.random.RandomState(seed).normal(size=(forward.shape[0], width))
+    if rng_kind == 'legacy':
+        omega = np.random.RandomState(seed).normal(size=(forward.shape[0], width))
+        state = np.random.RandomState(seed)
+    else:
+        omega = np.random.default_rng(seed).normal(size=(forward.shape[0], width))
+        state = seed if rng_kind == 'integer' else np.random.default_rng(seed)
     q = linalg.svd(backward @ omega, full_matrices=False)[0]
     alpha = 0.0
     history = []
@@ -272,7 +278,7 @@ def test_against_independent_shifted_svd_reference(shape, side, normalizer):
     u, s, vt = linalg.svd(b, full_matrices=False)
     expected = u[:, :k].T if side == 'left' else (q @ vt[:k].T).T
     model = MyMF(k, n_oversamples=width-k, n_iter=iterations,
-                 random_state=seed, orientation=side, normalizer=normalizer, n_jobs=1)
+                 random_state=state, orientation=side, normalizer=normalizer, n_jobs=1)
     z = model.fit_transform(x)
     # Compare projectors, which are invariant to arbitrary SVD signs.
     assert_allclose(model.components_.T @ model.components_, expected.T @ expected,

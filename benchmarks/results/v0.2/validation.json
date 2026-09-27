@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "passed_parameterized_cases_per_configuration": 291,
+  "configurations": [
+    "OpenMP auto AVX-512",
+    "OpenMP forced AVX2",
+    "OpenMP forced baseline",
+    "independent serial build",
+    "separate wheel installation"
+  ],
+  "source_sha256": {
+    "src/mymf/_kernels.pyx": "65a870b807eb10e2ffa90bcb363c4aea16c6e2dc36f96af8954653534b9515e9",
+    "src/mymf/_simd.h": "e786ecc879db4f2949293135838b5030a451e80d7d6eaea9ae78e052981e8761",
+    "src/mymf/_linalg.py": "7930de67f0178e6c4a11f4cbc32afba7696092b2a339fbdc693578885637f304",
+    "src/mymf/__init__.py": "42f90ce16cba8b93d50fcd90b171febbe828bcd3c405aefd6722fcafe7610dfc",
+    "src/mymf/_reg.h": "679aae37111ceb78e066854e0d28cc013f0c8902038f105d6bb7c9c0e3e289c7",
+    "src/mymf/estimator.py": "f6bbae1b7e9e221e11f9110040016cd368041512efbe7e6855b7bbe0e6ce6195",
+    "src/mymf/_threading.py": "e518f7188b243ff0ace9a7127a78ad0454d653537b223b8dedfc2560e5968ac1",
+    "setup.py": "432a4f772c2bf11fa81e8c20337876379417e8a4aa65851868b08fd4f5b27729",
+    "pyproject.toml": "54265300a1e5d47cb0ef111ec5b39959a59dc0af8f8bb4502c402249cbc3a09c",
+    "tests/test_mymf.py": "760d33219977866dd910796a24d1aa6fa4f011ff797af4985882f13efaf87d83",
+    "tests/test_speed_paths.py": "a0dd28c131818f9c41b0cb7a35741126bd914306a63587265cd2cd4663888bdd"
+  },
+  "local_wheel_filename": "mymf-0.2.0-cp313-cp313-linux_x86_64.whl",
+  "local_wheel_sha256": "2608ca1ad73979dc0d18583585509f97f2258d7fd629c3aa6aad3958a0864aa0",
+  "note": "Wheel is local validation only, not redistributed. Runtime dependencies were reused offline. See docs/validation.md."
+}

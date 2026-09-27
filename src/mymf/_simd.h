@@ -58,6 +58,8 @@ MYMF_ROW(row_f64_i32_avx512, MYMF_AVX512, double, int32_t)
 MYMF_ROW(row_f64_i64_avx512, MYMF_AVX512, double, int64_t)
 #endif
 
+#include "_reg.h"
+
 #define MYMF_FN(REAL, INDEX) void (*)(const REAL*, const INDEX*, size_t, size_t, const REAL*, REAL*, size_t)
 typedef void (*f32_i32_t)(const float*, const int32_t*, size_t, size_t, const float*, float*, size_t);
 typedef void (*f32_i64_t)(const float*, const int64_t*, size_t, size_t, const float*, float*, size_t);
@@ -75,16 +77,16 @@ static void mymf_init(void) {
     const char *request = getenv("MYMF_SIMD");
     if (request && strcmp(request, "baseline") == 0) return;
     if ((!request || strcmp(request, "avx2") != 0) && __builtin_cpu_supports("avx512f") && __builtin_cpu_supports("fma")) {
-        mymf_row_f32_i32 = row_f32_i32_avx512;
-        mymf_row_f32_i64 = row_f32_i64_avx512;
-        mymf_row_f64_i32 = row_f64_i32_avx512;
-        mymf_row_f64_i64 = row_f64_i64_avx512;
+        mymf_row_f32_i32 = reg_f32_i32_avx512;
+        mymf_row_f32_i64 = reg_f32_i64_avx512;
+        mymf_row_f64_i32 = reg_f64_i32_avx512;
+        mymf_row_f64_i64 = reg_f64_i64_avx512;
         mymf_simd = "avx512f+fma";
     } else if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma")) {
-        mymf_row_f32_i32 = row_f32_i32_avx2;
-        mymf_row_f32_i64 = row_f32_i64_avx2;
-        mymf_row_f64_i32 = row_f64_i32_avx2;
-        mymf_row_f64_i64 = row_f64_i64_avx2;
+        mymf_row_f32_i32 = reg_f32_i32_avx2;
+        mymf_row_f32_i64 = reg_f32_i64_avx2;
+        mymf_row_f64_i32 = reg_f64_i32_avx2;
+        mymf_row_f64_i64 = reg_f64_i64_avx2;
         mymf_simd = "avx2+fma";
     }
 #endif

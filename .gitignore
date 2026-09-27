@@ -17,4 +17,3 @@ src/mymf/_kernels.c
 benchmarks/results/local*.json
 ml-100k/
 *.whl
-*.txt

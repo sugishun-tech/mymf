@@ -1,0 +1,4 @@
+package: /mnt/data/mymf_work/wheel_venv/lib/python3.13/site-packages/mymf/__init__.py
+extension: /mnt/data/mymf_work/wheel_venv/lib/python3.13/site-packages/mymf/_kernels.cpython-313-x86_64-linux-gnu.so
+build: {'openmp': True, 'native': False, 'language': 'C', 'simd': 'avx512f+fma'}
+Standalone wheel smoke passed: (500, 16) float32

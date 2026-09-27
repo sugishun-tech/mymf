@@ -1,0 +1,5 @@
+/mnt/data/mymf_verify_venv/lib/python3.13/site-packages/mymf/__init__.py
+/mnt/data/mymf_verify_venv/lib/python3.13/site-packages/mymf/_kernels.cpython-313-x86_64-linux-gnu.so
+3.13.5 (main, Jun 25 2025, 18:55:22) [GCC 14.2.0]
+0.2.0 {'openmp': True, 'native': False, 'language': 'C', 'simd': 'avx512f+fma'}
+fit/transform (100, 8) finite: True

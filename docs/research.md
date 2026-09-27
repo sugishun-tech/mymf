@@ -16,16 +16,18 @@ Published results from other hardware are not mymf benchmark results.
 
 ## What is and is not established
 
-The release establishes that this implementation builds, has a tested Python API,
-and is faster than the tested sklearn configuration on the supplied synthetic
-sparse workloads at comparable measured reconstruction quality. It includes a
-shift-off ablation, equal-iteration comparisons, reduced-iteration comparisons,
-dense data, synthetic ranking metrics and a negative peak-memory result.
+Release v0.2 establishes that this implementation builds, has a tested Python API,
+and is faster than the tested sklearn configuration on the supplied MovieLens 100K
+split at equal iteration counts, with no lower mean Recall/NDCG in this run. A large
+synthetic sparse regression benchmark also retains the speed advantage. Neither finding
+establishes statistical superiority of recommendation quality or universal speedups.
+The v0.1 shift-off, dense, synthetic ranking and peak-memory results are retained as
+historical measurements, not silently relabelled as v0.2 results.
 
 It does **not** establish a world speed record, superiority to the authors' MKL
 implementation, equivalence at a specified certified residual, superiority to ALS
-or BPR on recommendation, or generalization to real production data. The optional
-MovieLens runner has no recorded real-data measurements in this release.
+or BPR on recommendation, or generalization to real production data. MovieLens 100K was measured in v0.2; see [benchmarks.md](benchmarks.md). This does not
+establish superiority over other SOTA implementations.
 
 The scope is approximate uncentred SVD, not all algorithms called "matrix
 factorization". Adding a masked or weighted recommendation objective would be a
