@@ -1,0 +1,7 @@
+include LICENSE README.md CHANGELOG.md CONTRIBUTING.md qiita_article.md
+recursive-include src/mymf *.pyx *.h py.typed
+recursive-include tests *.py
+recursive-include examples *.py
+recursive-include benchmarks *.py *.json *.md *.txt
+recursive-include docs *.md
+exclude src/mymf/_kernels.c

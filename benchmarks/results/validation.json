@@ -1,0 +1,33 @@
+{
+  "release": "0.1.0",
+  "validation_date": "2026-09-27",
+  "python": "3.13.5 (main, Jul 15 2026, 20:25:40) [GCC 14.2.0]",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "numpy": "2.3.5",
+  "scipy": "1.17.0",
+  "sklearn": "1.8.0",
+  "cython": "3.2.4",
+  "default_build": {
+    "openmp": true,
+    "native": false,
+    "language": "C",
+    "simd": "avx512f+fma"
+  },
+  "tests": {
+    "openmp_auto": 141,
+    "openmp_baseline": 141,
+    "openmp_avx2": 141,
+    "serial": 141,
+    "installed_wheel": 141
+  },
+  "test_note": "141 includes full sklearn check_estimator and pandas tests in this environment.",
+  "source_sha256": {
+    "src/mymf/estimator.py": "b75b0c556ffffc928abcd59bbe747551ab04446d88b9ca8a32de3e8876400c7e",
+    "src/mymf/_linalg.py": "908f5f46656921a5c9ee8d7225316fb6b0071d7d33b89ea527f2635064a72cbf",
+    "src/mymf/_kernels.pyx": "02bd14f38cbe0577f5ff107b7128559d1b2f27ef84a19a1b2d37da8c640ce93a",
+    "src/mymf/_simd.h": "e700639f3453bb3b05eaaf3585923163a2678a4b681f84515b449a641e93799b",
+    "src/mymf/__init__.py": "011415ef3aba384540874efd5d2d49c1bd077b7cf1458ac4b942ac2358f29aa6"
+  },
+  "distribution_validation": "Source tree -> sdist -> extracted sdist -> compiled wheel -> installed in a separate venv; package and extension paths checked. Existing runtime dependencies exposed via a .pth file, not freshly downloaded.",
+  "unverified": "Other platforms/Python versions, networked isolated dependency installation, original dashSVD/MKL speed, real recommendation datasets."
+}
